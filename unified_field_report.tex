@@ -1,10 +1,10 @@
 \documentclass[11pt]{article}
-\usepackage[a4paper,margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
-\usepackage{hyperref}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{siunitx}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{geometry}
+\geometry{margin=1in}
 
 \title{Unified Simple Field Theory: Particle--Universe Report}
 \author{Generated Summary}
@@ -13,86 +13,97 @@
 \begin{document}
 \maketitle
 
-\section{Overview}
-This report summarizes a self-contained ``particle universe'' model that encodes a compact closure for certainty-driven interactions, spin-induced torsion, two-sheet dynamics, and horizon drift. The model is not intended to be general relativity or Einstein--Cartan theory; instead it is a configurable sandbox for intuition building with explicit terms.
+\begin{abstract}
+This report summarizes the ``Unified Simple Field Theory'' particle--universe sandbox implemented in \texttt{universe\_sim.py}.
+The model is intentionally compact and assumption-closed: certainty gradients drive effective gravity, spin phase drives torsion, a two-sheet coupling approximates matter/backsheet interactions, and a horizon drift term induces an outward flow.
+It is a configurable toy model for intuition-building, not a claim of general relativity or Einstein--Cartan dynamics.
+\end{abstract}
 
 \section{State Variables and Dimensions}
 Each particle carries:
 \begin{itemize}
-  \item A 6D spatial position $x_i \in \mathbb{R}^6$ and velocity $v_i \in \mathbb{R}^6$.
-  \item A scalar uncertainty $\sigma_i$ (with floor/ceiling bounds).
-  \item A scalar spin phase $s_i \in [-\pi, \pi)$.
-  \item A sheet label (matter vs backsheet) controlling sign-flipped coupling.
+  \item A $6$-dimensional position $x_i \in \mathbb{R}^6$ and velocity $v_i \in \mathbb{R}^6$.
+  \item A scalar uncertainty $\sigma_i$ (bounded by floor/ceiling clamps).
+  \item A spin phase $s_i \in [-\pi,\pi)$.
+  \item A sheet label (matter vs backsheet) that flips cross-sheet coupling.
 \end{itemize}
-Observables and diagnostics are presented in a 2D projection of the full state, which represents the effective 4D ``view'' of a single observer.
+Diagnostics are visualized using a 2D projection of the full state, representing a single observer's view.
 
 \section{Core Definitions}
-Certainty and heat are defined as:
+Certainty and heat are defined as
 \begin{align}
-C_i &= \frac{1}{\sigma_i^2},\\
-H_i &= \frac{1}{C_i} = \sigma_i^2.
+  C_i &= \frac{1}{\sigma_i^2},\\
+  H_i &= \frac{1}{C_i} = \sigma_i^2.
 \end{align}
-A buoyancy factor modulates coupling strength and sign:
+A buoyancy factor modulates interaction strength and sign,
 \begin{equation}
- b_i = 1 - \frac{\sigma_i}{\sigma_{\text{crit}}}.
+  b_i = 1 - \frac{\sigma_i}{\sigma_{\mathrm{crit}}}.
 \end{equation}
+Large $\sigma_i$ (low certainty) yields negative or reduced coupling, while small $\sigma_i$ strengthens attraction.
 
-\section{Forces}
-The acceleration on particle $i$ is the sum of: (1) certainty-gradient gravity, (2) spin torsion, (3) optional black-hole frame dragging, and (4) mild velocity damping.
+\section{Forces and Dynamics}
+The net acceleration on particle $i$ is a sum of:
+(i) certainty-gradient gravity,
+(ii) spin torsion,
+(iii) optional ``black-hole'' core enhancement,
+and (iv) mild velocity damping for stability.
 
 \subsection{Certainty-Gradient Gravity}
-Interactions are driven by gradients in certainty rather than absolute certainty products. For each pair $(i,j)$:
+For each pair $(i,j)$, define a sheet coupling factor
 \begin{equation}
- w_{ij} = G_c\, (C_i - C_j)\, b_i b_j\, s_{ij}\, g_{\text{bh}}(j),
+  s_{ij} =
+  \begin{cases}
+    1, & \text{same sheet},\\
+    -\beta, & \text{cross-sheet},
+  \end{cases}
 \end{equation}
-where $s_{ij}$ applies same-sheet attraction and cross-sheet sign flips, and $g_{\text{bh}}$ boosts attraction for low-$\sigma$ (``BH-like'') cores.
-
-The resulting radial force is proportional to $w_{ij}/r_{ij}^3$.
+where $\beta \in (0,1]$ is the reduced backsheet coupling.
+The pair weight is
+\begin{equation}
+  w_{ij} = G_c\,(C_i - C_j)\,b_i b_j\,s_{ij}\,g_{\mathrm{bh}}(j),
+\end{equation}
+with $g_{\mathrm{bh}}(j)$ boosting attraction when particle $j$ is a high-certainty ``core'' (\,$\sigma_j < \sigma_{\mathrm{bh}}$\,).
+The resulting radial acceleration is proportional to
+\begin{equation}
+  \mathbf{a}_i^{(\mathrm{grav})} = -\sum_{j\neq i} w_{ij}\,\frac{\mathbf{r}_{ij}}{\lVert \mathbf{r}_{ij} \rVert^3},
+\end{equation}
+where $\mathbf{r}_{ij} = x_i - x_j$.
 
 \subsection{Spin Torsion}
 Spin differences generate a transverse force in the projected $(x,y)$ plane:
 \begin{equation}
- \Delta s_{ij} = s_i - s_j, \qquad
- \mathbf{a}^{\perp}_i \propto \sin(\Delta s_{ij})\, \frac{\mathbf{r}_{ij}^{\perp}}{r_{ij} + \epsilon},
+  \Delta s_{ij} = s_i - s_j, \qquad
+  \mathbf{a}_i^{\perp} \propto \sum_{j\neq i} \sin(\Delta s_{ij})\,\frac{\mathbf{r}_{ij}^{\perp}}{\lVert \mathbf{r}_{ij} \rVert + \epsilon}.
 \end{equation}
-with a smooth core profile to limit short-range divergence.
+A smooth core profile limits the short-range divergence, and the same sheet-coupling sign convention applies.
 
-\section{Two-Sheet Fabric and Time Reversal}
-The system includes a ``backsheet'' (antimatter) that evolves with a flipped time direction. Cross-sheet interactions are sign-reversed and reduced, representing an opposite geometric response on the second sheet.
-
-\section{Horizon Drift}
-A terminal drift pushes particles outward toward a boundary at radius $R$:
+\subsection{Horizon Drift}
+An outward terminal flow models an entropy sink at radius $R$:
 \begin{equation}
- \mathbf{v}_{\text{drift}} = v_0\, \frac{y}{(1-y)^{\alpha}}\, \hat{r}, \qquad y = \frac{r}{R}.
+  \mathbf{v}_{\mathrm{drift}} = v_0\,\frac{y}{(1-y)^{\alpha}}\,\hat{r},
+  \qquad y = \frac{r}{R}.
 \end{equation}
-This produces a dark-energy-like outward flow near the horizon.
+This induces a dark-energy-like expansion near the boundary.
 
-\section{Thermodynamics}
-Uncertainty evolves via cooling toward a floor and heating from local kinetic energy:
+\section{Thermodynamics of Uncertainty}
+Uncertainty evolves via cooling toward a floor and heating from kinetic energy:
 \begin{equation}
- \dot{\sigma}_i = -\lambda(\sigma_i-\sigma_{\text{floor}}) + \eta\, \lVert v_i \rVert^2,
+  \dot{\sigma}_i = -\lambda\,(\sigma_i - \sigma_{\mathrm{floor}}) + \eta\,\lVert v_i \rVert^2,
 \end{equation}
-with clamping to $[\sigma_{\text{floor}},\sigma_{\text{ceiling}}]$.
+with clamping to $[\sigma_{\mathrm{floor}},\sigma_{\mathrm{ceiling}}]$.
+In this closure, cold regions can ``crystallize'' to low uncertainty while energetic regions heat and diffuse.
+
+\section{Two-Sheet Fabric and Singular Cores}
+The model includes a backsheet (antimatter) that evolves with a time-reversed sign convention and reduced cross-sheet coupling.
+Particles that cool below $\sigma_{\mathrm{bh}}$ behave like singular cores with enhanced attraction and transverse frame-dragging.
 
 \section{Diagnostics}
-Optional diagnostics report:
-\begin{itemize}
-  \item Mean kinetic energy per particle.
-  \item Mean certainty and mean heat.
-  \item RMS radius.
-\end{itemize}
-These allow rough comparison to baseline or standard models (e.g., Newtonian N-body) by tracking global trends over time.
-
-\section{Key Parameters}
-The model centralizes configuration in a parameter bundle, including:
-\begin{itemize}
-  \item $G_c$, $\sigma_{\text{crit}}$, $\epsilon$ (certainty gravity core settings).
-  \item Spin torsion strength and scale.
-  \item Horizon radius and drift parameters.
-  \item Thermodynamic rates and $\sigma$ distribution parameters ($\mu$, $\sigma_{\text{std}}$).
-\end{itemize}
+Optional diagnostics track mean kinetic energy, mean certainty/heat, and RMS radius.
+Visualization includes particle positions, radial and tangential speed trends, and the uncertainty distribution histogram.
 
 \section{Notes and Intended Use}
-This is a compact closure with explicit terms, designed to keep complexity minimal and to emphasize the qualitative roles of certainty gradients, spin torsion, and horizon drift. It is intended as a sandbox for exploration rather than a statement of physical theory.
+This report documents the sandbox closure as implemented.
+The goal is a compact, editable model in which each term can be adjusted independently for experimentation.
+It is not a claim of physical completeness.
 
 \end{document}
