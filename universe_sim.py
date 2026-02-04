@@ -21,13 +21,13 @@ with your themes:
         low certainty (large sigma)  -> weak or buoyant (repulsive) coupling
   - Torsion as spin-driven twist: spin differences induce transverse forces
   - Two-sheet fabric: a backsheet (antimatter) is modeled as a time-reversed
-    copy of the dynamics (backwards in time in a toy sense)
-  - 7D toy kinematics: 6 spatial dimensions + 1 spin dimension
+    copy of the dynamics (backwards in time in a simplified sense)
+  - 7D kinematics: 6 spatial dimensions + 1 spin dimension
     (a single observer sees a 4D projection of the full state)
   - Dark-energy-like behavior: a horizon boundary acts as an entropy sink and
     generates an outward drift ("terminal velocity flow")
 
-Everything below is a toy model (not GR, not Einstein--Cartan equations). It is
+Everything below is a simplified model (not GR, not Einstein--Cartan equations). It is
 structured so each term is editable and labeled, keeping the closure compact
 and explicit rather than relying on long, opaque Lagrangians.
 
@@ -138,7 +138,7 @@ def pairwise_forces(x: np.ndarray,
     - layer=0: matter sheet
     - layer=1: antimatter (back) sheet
 
-    Coupling rule (toy closure):
+    Coupling rule (simplified closure):
       - same-layer interactions: attract/repel according to buoyancy (as before)
       - cross-layer interactions: sign-flipped and reduced by `back_coupling`
         (models "right on the back" with an opposite geometric response)
@@ -214,7 +214,7 @@ def update_sigma(sigma: np.ndarray,
                  sigma_floor: float,
                  sigma_ceiling: float,
                  local_energy: np.ndarray) -> np.ndarray:
-    """Toy thermodynamics:
+    """Simplified thermodynamics:
 
     - cooling (removing uncertainty): sigma decays toward sigma_floor
     - heating from motion/collisions: sigma increases with local_energy
@@ -304,7 +304,7 @@ def main():
     apply_universe_style()
 
     # -----------------
-    # Universe parameters (toy units)
+    # Universe parameters (model units)
     # -----------------
     params = UniverseParams()
     N = params.n_particles
@@ -424,7 +424,7 @@ def main():
     midplane_k = 0.06
 
     def evolve_one_step(x_: np.ndarray, v_: np.ndarray, sigma_: np.ndarray, spin_: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        # Antimatter sheet runs backwards in time (toy): flip the sign of dt.
+        # Antimatter sheet runs backwards in time (simplified): flip the sign of dt.
         tdir = np.where(layer == 0, 1.0, -1.0)  # +1 matter, -1 antimatter
 
         # Drift is time-reversed on the backsheet
