@@ -1,6 +1,6 @@
-# Unified Simple Field Theory (Toy Particle Universe)
+# Unified Simple Field Theory (Particle Universe)
 
-This repository contains a self‑contained toy simulation (`universe_sim.py`) that explores a compact, explicit closure for certainty‑gradient interactions, spin‑driven torsion, two‑sheet coupling, and horizon drift. It is **not** a physical GR or Einstein–Cartan implementation; it is a sandbox for intuition and experimentation.
+This repository contains a self‑contained exploratory simulation (`universe_sim.py`) that explores a compact, explicit closure for certainty‑gradient interactions, spin‑driven torsion, two‑sheet coupling, and horizon drift. It is **not** a physical GR or Einstein–Cartan implementation; it is a configurable sandbox for intuition and experimentation.
 
 ## What’s inside
 
