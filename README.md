@@ -1,6 +1,6 @@
-# Unified Simple Field Theory (Toy Particle Universe)
+# Unified Simple Field Theory (Particle Universe)
 
-This repository contains a self‑contained toy simulation (`universe_sim.py`) that explores a compact, explicit closure for certainty‑gradient interactions, spin‑driven torsion, two‑sheet coupling, and horizon drift. It is **not** a physical GR or Einstein–Cartan implementation; it is a sandbox for intuition and experimentation.
+This repository contains a self‑contained exploratory simulation (`universe_sim.py`) that explores a compact, explicit closure for certainty‑gradient interactions, spin‑driven torsion, two‑sheet coupling, and a horizon sink/drain flow. It is **not** a physical GR or Einstein–Cartan implementation; it is a configurable sandbox for intuition and experimentation.
 
 ## What’s inside
 
@@ -43,7 +43,7 @@ ANIMATE=0 SHOW_PLOTS=0 UNIVERSE_OUTPUT=universe_sim.png N_STEPS=200 MPLBACKEND=A
 - **Gravity**: driven by *certainty gradients* (delta‑C), modulated by a buoyancy term.
 - **Torsion**: spin differences generate transverse forces in the projected plane.
 - **Two‑sheet fabric**: matter/backsheet coupling with sign‑flipped interactions.
-- **Horizon drift**: outward terminal flow near a boundary radius.
+- **Horizon sink**: outward terminal flow toward a boundary radius that acts like a giant drain.
 
 For full details, see the LaTeX report.
 
