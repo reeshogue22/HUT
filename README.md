@@ -6,6 +6,7 @@ This repository contains a self‑contained exploratory simulation (`universe_si
 
 - **`universe_sim.py`** — the simulation and visualization pipeline.
 - **`unified_field_report.tex`** — a LaTeX report summarizing the model and equations.
+- **`hut_sim.py`** — a minimal HUT-aligned lattice + kernel-field prototype.
 
 ## Quick start
 
@@ -46,6 +47,14 @@ ANIMATE=0 SHOW_PLOTS=0 UNIVERSE_OUTPUT=universe_sim.png N_STEPS=200 MPLBACKEND=A
 - **Horizon drift**: outward terminal flow near a boundary radius.
 
 For full details, see the LaTeX report.
+
+## HUT prototype
+
+To run the HUT-aligned prototype implementation:
+
+```bash
+python hut_sim.py
+```
 
 ## Notes
 
