@@ -39,8 +39,8 @@ ANIMATE=0 SHOW_PLOTS=0 UNIVERSE_OUTPUT=universe_sim.png N_STEPS=200 MPLBACKEND=A
 
 ## Model summary (high level)
 
-- **Certainty**: \(C_i = 1 / \sigma_i^2\)
-- **Heat**: \(H_i = 1 / C_i = \sigma_i^2\)
+- **Certainty (HUT canonical)**: \(C_i = 1 / \sqrt{\det(\Sigma_i)}\)
+- **Heat (HUT canonical)**: \(H_i = 1 / C_i\)
 - **Gravity**: driven by *certainty gradients* (delta‑C), modulated by a buoyancy term.
 - **Torsion**: spin differences generate transverse forces in the projected plane.
 - **Two‑sheet fabric**: matter/backsheet coupling with sign‑flipped interactions.
