@@ -56,6 +56,7 @@ class Stage:
     U_prev: np.ndarray
     T: np.ndarray
 
+    return 1.0 / certainty(sigma, eps=eps)
 
 def clamp_covariance(sigma: np.ndarray, *, lambda_min: float, lambda_max: float) -> np.ndarray:
     sym = 0.5 * (sigma + sigma.T)
@@ -63,6 +64,8 @@ def clamp_covariance(sigma: np.ndarray, *, lambda_min: float, lambda_max: float)
     eigvals = np.clip(eigvals, lambda_min, lambda_max)
     return eigvecs @ np.diag(eigvals) @ eigvecs.T
 
+def mass_observed(sigma: np.ndarray, *, kappa: float, planck_length: float, hbar: float = 1.0) -> float:
+    """Certainty-weighted observed mass scale with finite covariance clamping."""
 
 def certainty(sigma: np.ndarray, *, eps: float = 1e-12) -> float:
     """Canonical HUT certainty, exact invariant definition C = 1/sqrt(det(Sigma))."""
@@ -80,6 +83,8 @@ def heat(sigma: np.ndarray) -> float:
 def sat(z: np.ndarray, *, z_sat: float) -> np.ndarray:
     return z_sat * np.tanh(z / max(z_sat, 1e-12))
 
+def potential_dark_pressure(sigma: np.ndarray, *, coeff: float) -> float:
+    return coeff * heat(sigma)
 
 def laplacian_periodic(field: np.ndarray, *, dx: float) -> np.ndarray:
     return (
@@ -90,6 +95,8 @@ def laplacian_periodic(field: np.ndarray, *, dx: float) -> np.ndarray:
         - 4.0 * field
     ) / (dx * dx)
 
+def sink_flow_sigma(sigma: np.ndarray, params: HUTParams, *, dt: float) -> np.ndarray:
+    """Stable covariance update with finite certainty response and eigenvalue clamping."""
 
 def gradient_periodic(field: np.ndarray, *, dx: float) -> tuple[np.ndarray, np.ndarray]:
     """Return (d/dx, d/dy) for field[i,j] with meshgrid(indexing='ij')."""
