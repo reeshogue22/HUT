@@ -56,6 +56,18 @@ To run the HUT-aligned prototype implementation:
 python hut_sim.py
 ```
 
+## Git preflight (avoid conflict churn)
+
+Before pushing or opening a PR, run:
+
+```bash
+git fetch --all --prune
+git status --short --branch
+rg -n "^(<<<<<<<|=======|>>>>>>>)" -S .
+```
+
+This catches unresolved conflict markers early and keeps PR branches clean.
+
 ## Notes
 
 This code intentionally keeps the closure compact and explicit so each term can be modified independently. It is intended as a playground for experimentation rather than a statement of physical theory.
