@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -31,6 +32,9 @@ class HUTParams:
     particle_noise: float = 0.05
     move_particles: bool = False
     seed: int = 7
+    invariant_tolerance_ratio: float = 1.0001
+    output_dir: str = "outputs"
+    frame_stride: int = 12
 
 
 @dataclass
@@ -61,14 +65,14 @@ def clamp_covariance(sigma: np.ndarray, *, lambda_min: float, lambda_max: float)
 
 
 def certainty(sigma: np.ndarray, *, eps: float = 1e-12) -> float:
-    """Canonical HUT certainty, exact invariant definition."""
+    """Canonical HUT certainty, exact invariant definition C = 1/sqrt(det(Sigma))."""
 
     det_sigma = max(float(np.linalg.det(sigma)), eps)
     return 1.0 / np.sqrt(det_sigma)
 
 
 def heat(sigma: np.ndarray) -> float:
-    """Canonical HUT heat, exact invariant definition."""
+    """Canonical HUT heat, exact invariant definition H = 1/C."""
 
     return 1.0 / certainty(sigma)
 
@@ -88,9 +92,23 @@ def laplacian_periodic(field: np.ndarray, *, dx: float) -> np.ndarray:
 
 
 def gradient_periodic(field: np.ndarray, *, dx: float) -> tuple[np.ndarray, np.ndarray]:
-    gx = (np.roll(field, -1, axis=0) - np.roll(field, 1, axis=0)) / (2.0 * dx)
-    gy = (np.roll(field, -1, axis=1) - np.roll(field, 1, axis=1)) / (2.0 * dx)
-    return gx, gy
+    """Return (d/dx, d/dy) for field[i,j] with meshgrid(indexing='ij')."""
+
+    d_dx = (np.roll(field, -1, axis=0) - np.roll(field, 1, axis=0)) / (2.0 * dx)
+    d_dy = (np.roll(field, -1, axis=1) - np.roll(field, 1, axis=1)) / (2.0 * dx)
+    return d_dx, d_dy
+
+
+def second_derivatives_periodic(field: np.ndarray, *, dx: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    d2xx = (np.roll(field, -1, axis=0) - 2.0 * field + np.roll(field, 1, axis=0)) / (dx * dx)
+    d2yy = (np.roll(field, -1, axis=1) - 2.0 * field + np.roll(field, 1, axis=1)) / (dx * dx)
+    d2xy = (
+        np.roll(np.roll(field, -1, axis=0), -1, axis=1)
+        - np.roll(np.roll(field, -1, axis=0), 1, axis=1)
+        - np.roll(np.roll(field, 1, axis=0), -1, axis=1)
+        + np.roll(np.roll(field, 1, axis=0), 1, axis=1)
+    ) / (4.0 * dx * dx)
+    return d2xx, d2yy, d2xy
 
 
 def world_grid(params: HUTParams) -> tuple[np.ndarray, np.ndarray]:
@@ -120,7 +138,6 @@ def deposit_sources_local(
 
         cx = int(np.argmin(np.abs(X[:, 0] - p.mu[0])))
         cy = int(np.argmin(np.abs(Y[0, :] - p.mu[1])))
-
         i0, i1 = max(0, cx - half_width), min(params.nx, cx + half_width + 1)
         j0, j1 = max(0, cy - half_width), min(params.ny, cy + half_width + 1)
 
@@ -140,6 +157,7 @@ def deposit_sources_local(
         jx_total[i0:i1, j0:j1] += A2 * p.phase_grad[0]
         jy_total[i0:i1, j0:j1] += A2 * p.phase_grad[1]
 
+    # 2D scalar curl(j): d/dx(j_y) - d/dy(j_x)
     d_jy_dx = (np.roll(jy_total, -1, axis=0) - np.roll(jy_total, 1, axis=0)) / (2.0 * params.dx)
     d_jx_dy = (np.roll(jx_total, -1, axis=1) - np.roll(jx_total, 1, axis=1)) / (2.0 * params.dx)
     S_phi = d_jy_dx - d_jx_dy
@@ -185,7 +203,7 @@ def update_particles_local(particles: list[Particle], stage: Stage, params: HUTP
         p.mu = p.mu + params.dt * p.vel
 
 
-def radio_scenario(params: HUTParams) -> list[Particle]:
+def radio_scenario(_params: HUTParams) -> list[Particle]:
     """Single rotating anisotropic source with constant det(Sigma)."""
 
     base = np.diag([0.16, 1.0])
@@ -205,7 +223,7 @@ def rotate_covariance(base_sigma: np.ndarray, angle: float) -> np.ndarray:
     return R @ base_sigma @ R.T
 
 
-def run_simulation(params: HUTParams) -> dict[str, float]:
+def run_simulation(params: HUTParams) -> dict[str, float | str]:
     rng = np.random.default_rng(params.seed)
     X, Y = world_grid(params)
 
@@ -217,8 +235,17 @@ def run_simulation(params: HUTParams) -> dict[str, float]:
     particles = radio_scenario(params)
     base_sigma = particles[0].sigma.copy()
 
+    out_dir = Path(params.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     det_series: list[float] = []
     certainty_series: list[float] = []
+    trace_rows: list[list[float]] = []
+    frame_steps: list[int] = []
+    U_frames: list[np.ndarray] = []
+    T_frames: list[np.ndarray] = []
+
+    det_ix, det_iy = params.nx // 2 + params.nx // 6, params.ny // 2
 
     for step in range(params.steps):
         angle = 2.0 * np.pi * step / max(params.steps, 1)
@@ -230,20 +257,69 @@ def run_simulation(params: HUTParams) -> dict[str, float]:
         particles[0].phase = angle
         particles[0].phase_grad = np.array([2.5 * np.cos(angle), 2.5 * np.sin(angle)])
 
-        det_series.append(float(np.linalg.det(particles[0].sigma)))
-        certainty_series.append(certainty(particles[0].sigma))
+        det_val = float(np.linalg.det(particles[0].sigma))
+        c_val = certainty(particles[0].sigma)
+        det_series.append(det_val)
+        certainty_series.append(c_val)
 
         S_C, S_phi = deposit_sources_local(particles, params, X, Y)
         stage = evolve_stage(stage, S_C, S_phi, params)
         update_particles_local(particles, stage, params, rng)
 
+        d2xx, d2yy, d2xy = second_derivatives_periodic(stage.U, dx=params.dx)
+        u_det = float(stage.U[det_ix, det_iy])
+        h_plus = float(d2xx[det_ix, det_iy] - d2yy[det_ix, det_iy])
+        h_cross = float(2.0 * d2xy[det_ix, det_iy])
+        trace_rows.append([step * params.dt, u_det, h_plus, h_cross])
+
+        if step % params.frame_stride == 0 or step == params.steps - 1:
+            frame_steps.append(step)
+            U_frames.append(stage.U.copy())
+            T_frames.append(stage.T.copy())
+
+    det_min = float(np.min(det_series))
+    det_max = float(np.max(det_series))
+    c_min = float(np.min(certainty_series))
+    c_max = float(np.max(certainty_series))
+    det_ratio = det_max / max(det_min, 1e-12)
+    c_ratio = c_max / max(c_min, 1e-12)
+
+    assert det_ratio < params.invariant_tolerance_ratio, (
+        f"det(Sigma) ratio too large under tilt: {det_ratio:.8f}"
+    )
+    assert c_ratio < params.invariant_tolerance_ratio, (
+        f"certainty ratio too large under tilt: {c_ratio:.8f}"
+    )
+
+    frames_path = out_dir / "radio_frames.npz"
+    np.savez_compressed(
+        frames_path,
+        frame_steps=np.array(frame_steps, dtype=int),
+        U_frames=np.stack(U_frames, axis=0),
+        T_frames=np.stack(T_frames, axis=0),
+    )
+
+    trace_path = out_dir / "radio_detector_trace.csv"
+    trace_array = np.array(trace_rows, dtype=float)
+    np.savetxt(
+        trace_path,
+        trace_array,
+        delimiter=",",
+        header="t,U_detector,h_plus,h_cross",
+        comments="",
+    )
+
     return {
-        "det_min": float(np.min(det_series)),
-        "det_max": float(np.max(det_series)),
-        "C_min": float(np.min(certainty_series)),
-        "C_max": float(np.max(certainty_series)),
+        "det_min": det_min,
+        "det_max": det_max,
+        "C_min": c_min,
+        "C_max": c_max,
         "U_rms": float(np.sqrt(np.mean(stage.U * stage.U))),
         "T_rms": float(np.sqrt(np.mean(stage.T * stage.T))),
+        "det_ratio": det_ratio,
+        "C_ratio": c_ratio,
+        "frames_path": str(frames_path),
+        "trace_path": str(trace_path),
     }
 
 
@@ -251,10 +327,16 @@ def demo() -> None:
     params = HUTParams()
     metrics = run_simulation(params)
     print("HUT radio scenario complete")
-    print(f"det(Sigma) range: [{metrics['det_min']:.8f}, {metrics['det_max']:.8f}]")
-    print(f"certainty C range: [{metrics['C_min']:.8f}, {metrics['C_max']:.8f}]")
-    print(f"stage U_rms: {metrics['U_rms']:.8f}")
-    print(f"stage T_rms: {metrics['T_rms']:.8f}")
+    print(f"det_min: {metrics['det_min']:.12f}")
+    print(f"det_max: {metrics['det_max']:.12f}")
+    print(f"C_min: {metrics['C_min']:.12f}")
+    print(f"C_max: {metrics['C_max']:.12f}")
+    print(f"det_ratio: {metrics['det_ratio']:.12f}")
+    print(f"C_ratio: {metrics['C_ratio']:.12f}")
+    print(f"U_rms: {metrics['U_rms']:.12f}")
+    print(f"T_rms: {metrics['T_rms']:.12f}")
+    print(f"frames_path: {metrics['frames_path']}")
+    print(f"trace_path: {metrics['trace_path']}")
 
 
 if __name__ == "__main__":
